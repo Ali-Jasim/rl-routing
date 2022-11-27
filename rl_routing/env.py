@@ -4,8 +4,9 @@ from collections import defaultdict, OrderedDict
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 import numpy as np
+import cv2
 
-from .packet import Packet
+from packet import Packet
 
 FREE = "blue"
 OCCUPIED = "red"
@@ -19,6 +20,9 @@ class NetworkEnv():
         self.packets = OrderedDict()
         self.just_completed = []
         self.completed_packets = 0
+        self.occupied = {}
+        self.occupied_nodes = {}
+        self.collisions = 0
 
         self.fig = fig
         if self.fig is None:
@@ -39,6 +43,24 @@ class NetworkEnv():
             if p is None:
                 continue
             self.packets[p.id] = p
+
+    # keep track of occupied nodes
+    def update_occupied(self):
+
+        #
+        for packet in self.packets.values():
+            if isinstance(packet.current, tuple):
+                f, t = packet.current
+                self.occupied[(f, t)] = True
+                self.occupied[(t, f)] = True
+            else:
+                self.occupied[packet.current] = True
+
+        return self.occupied
+
+    def update_occupied_nodes(self):
+        self.occupied_nodes = [True if index in self.occupied else False
+                               for index in range(self.nodes)]
 
     def render(self, mode="rgb"):
         if mode == "rgb":
@@ -71,8 +93,12 @@ class NetworkEnv():
             ax = self.fig.gca()
             nx.draw(self.graph, pos, ax=ax, **options)
             self.canvas.draw()
-            s, (width, height) = self.canvas.print_to_buffer()
-            return np.fromstring(s, np.uint8).reshape((height, width, 4))
+            # convert to opencv image for display
+            img = np.fromstring(self.canvas.tostring_rgb(), dtype=np.uint8,
+                                sep='')
+            img = img.reshape(self.canvas.get_width_height()[::-1] + (3,))
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            return img
         raise f"Mode {mode} not supported."
 
     def done(self):
@@ -87,6 +113,9 @@ class NetworkEnv():
             if isinstance(packet.current, tuple):
                 f, t = packet.current
                 wires[f][t] = True
+
+        self.update_occupied()
+        self.update_occupied_nodes()
 
         for packet_key in list(self.packets.keys()):
             if packet_key not in self.packets:
@@ -104,6 +133,8 @@ class NetworkEnv():
                 del self.packets[packet.id]
                 reward += 1
                 continue_check = True
+            else:
+                reward -= int(len(inputs)/len(self.packets))
 
             if continue_check:
                 continue
@@ -111,6 +142,12 @@ class NetworkEnv():
             cur = packet.current
             to = packet.to
             n = inputs[cur][to]
+
+            # detect collision
+            if n in self.occupied:
+                reward -= 1
+                self.collisions += 1
+
             if n == -1:
                 continue
             if not self.graph.has_edge(cur, n):
@@ -127,6 +164,7 @@ class NetworkEnv():
         self.completed_packets += reward
 
         info = {}
+
         return self.create_observation(), reward, self.done(), info
 
     def reset(self, initial_packets=1):
