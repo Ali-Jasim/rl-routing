@@ -1,16 +1,28 @@
 
 
 class Router:
-    def __init__(self, id, connections, graph):
+    def __init__(self, id, connections, kind, graph):
         # node on graph
         self.id = id
         self.network = graph
+        self.kind = kind
+
         # edges where this is the src
-        # list of wires
+        # list of wires connected to routers
         self.connections = connections
+
+        # how many actions are possible in router
         self.actions = len(connections)
+
+        # depending on type, set buffer size
+        if kind == 'T':
+            self.buffer_size = 100  # change this to hold more packets
+        elif kind == 'M':
+            self.buffer_size = 25  # change this to hold more packets
+        elif kind == 'C' or kind == 'CP':
+            self.buffer_size = 10
+
         self.buffer = []  # stack
-        self.buffer_size = 1  # change this to hold more packets
 
     def __eq__(self, other):
         if not isinstance(self, other):
@@ -37,6 +49,7 @@ class Router:
 
         return False
 
+    # push to wire
     def remove_packet(self, dst):
         # if there is a connection to the destination
         # and the buffer is not empty
@@ -45,4 +58,4 @@ class Router:
         if wire and self.buffer:
             packet = self.buffer[0]
             self.buffer = self.buffer[-1]
-            packet.hop(dst, self.network)
+            packet.push_to_wire(wire, dst)
