@@ -1,8 +1,10 @@
 import uuid
 import networkx as nx
+import Wire
+import Router
 
 
-class Packet():
+class Packet:
     def __init__(self, src, dst, graph, path=[]):
         self.id = str(uuid.uuid4())
         self.curr = src
@@ -21,9 +23,10 @@ class Packet():
     def on_wire(self):
         # if packet is on an edge it will be a tuple
         # require it to be false and dest of wire needs to be free for packet to hop
-        return isinstance(self.curr, tuple)
+        return isinstance(self.curr, Wire)
 
     def find_next_hop(self):
+        # we are at destination
         if len(self.path) < 2:
             return -1
         # shortest path
@@ -33,7 +36,13 @@ class Packet():
 
     def hop(self, target, graph):
         # hop to next router
-        self.curr = (self.curr, target)
+        if isinstance(self.curr, Wire):
+            # we are on wire hop to router
+            self.curr = self.curr.remove_packet()
+        if isinstance(self.curr, Router):
+            self.curr = self.curr.remove_packet(target)
+
+        # self.curr = (self.curr, target)
         # for now just find shortest path
         self.path = nx.shortest_path(graph, target, self.dst)
 

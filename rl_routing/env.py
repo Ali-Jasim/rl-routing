@@ -56,6 +56,7 @@ class NetworkEnv():
     # keep track of occupied nodes
     def update_occupied(self):
 
+        # not a good implementation have to update
         #
         for packet in self.packets.values():
             if isinstance(packet.current, tuple):

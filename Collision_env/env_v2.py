@@ -1,6 +1,6 @@
 # create an environment using networkx simulating a network.
 # required : packets that hop from router to router (node to node)
-# idea :
+# idea : simulate centralized traffic controller
 import networkx as nx
 import numpy as np
 import cv2
