@@ -7,7 +7,7 @@ from matplotlib.figure import Figure
 from collections import defaultdict
 import seaborn as sns
 
-G = nx.random_internet_as_graph(100)
+G = nx.random_internet_as_graph(25)
 pos = nx.spring_layout(G)
 nx.set_node_attributes(G, pos, "pos")
 
@@ -24,7 +24,8 @@ class ShortestPathAgent():
         return actions
 
 # using opencv to draw pictures for display
-#todo add functionality to conintously generate packets, but only from nodes that are NOT occupied.
+# todo add functionality to conintously generate packets, but only from nodes that are NOT occupied.
+
 
 def draw_output(img):
     cv2.imshow('img', img)
@@ -50,6 +51,7 @@ for s in range(1000):
     img = env.render()
     draw_output(img)
     print("Step Reward", reward)
+    print('packets', len(env.packets))
     print("Total Reward", env.completed_packets)
     print('total collisions,', env.collisions)
     print(f"Step {s}/1000")
@@ -63,7 +65,7 @@ for s in range(1000):
         print('finished')
         break
     if s % 2 == 0:
-        env.create_packets(n=5)
+        env.create_packet_avoid()
 
 
 sns.lineplot(x=range(len(total_collisions)), y=total_collisions)

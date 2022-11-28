@@ -32,10 +32,15 @@ class NetworkEnv():
         nx.set_node_attributes(self.graph, {})
 
     def generate_packet(self):
+
         sender = random.choice(range(self.nodes))
-        to = random.choice(range(self.nodes))
-        path = nx.shortest_path(self.graph, sender, to)
-        return Packet(sender, to, path=path)
+        while (sender in self.occupied):
+            sender = random.choice(range(self.nodes))
+        else:
+
+            to = random.choice(range(self.nodes))
+            path = nx.shortest_path(self.graph, sender, to)
+            return Packet(sender, to, path=path)
 
     def create_packets(self, n=10):
         for _ in range(n):
@@ -43,6 +48,10 @@ class NetworkEnv():
             if p is None:
                 continue
             self.packets[p.id] = p
+
+    def create_packet_avoid(self):
+        if not self.all_occupied():
+            self.create_packets(n=10)
 
     # keep track of occupied nodes
     def update_occupied(self):
@@ -61,6 +70,13 @@ class NetworkEnv():
     def update_occupied_nodes(self):
         self.occupied_nodes = [True if index in self.occupied else False
                                for index in range(self.nodes)]
+
+    def all_occupied(self):
+
+        for node in self.occupied_nodes:
+            if not node:
+                return False
+        return True
 
     def render(self, mode="rgb"):
         if mode == "rgb":
@@ -114,9 +130,6 @@ class NetworkEnv():
                 f, t = packet.current
                 wires[f][t] = True
 
-        self.update_occupied()
-        self.update_occupied_nodes()
-
         for packet_key in list(self.packets.keys()):
             if packet_key not in self.packets:
                 continue
@@ -133,8 +146,6 @@ class NetworkEnv():
                 del self.packets[packet.id]
                 reward += 1
                 continue_check = True
-            else:
-                reward -= int(len(inputs)/len(self.packets))
 
             if continue_check:
                 continue
@@ -144,8 +155,8 @@ class NetworkEnv():
             n = inputs[cur][to]
 
             # detect collision
-            if n in self.occupied:
-                reward -= 1
+            if to in self.occupied:
+                # reward -= 1
                 self.collisions += 1
 
             if n == -1:
@@ -159,6 +170,8 @@ class NetworkEnv():
             wires[cur][n] = True
 
             packet.hop(n, self.graph)
+            self.update_occupied()
+            self.update_occupied_nodes()
 
         self.just_completed = just_completed
         self.completed_packets += reward
