@@ -1,7 +1,7 @@
 import uuid
 import networkx as nx
-import Wire
-import Router
+from wire import Wire
+from router import Router
 
 
 class Packet:
@@ -46,7 +46,7 @@ class Packet:
         return self.path[1]
 
     def complete(self):
-        return self.curr == self.dst
+        return self.curr is self.dst
 
     def update_path(self):
         self.path = nx.shortest_path(self.graph, self.curr, self.dst)

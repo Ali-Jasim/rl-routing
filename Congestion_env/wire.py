@@ -1,10 +1,10 @@
-
 class Wire:
     def __init__(self, router1, router2):
         # connection between two routers
         self.router1 = router1
         self.router2 = router2
         # list of packets on wire
+        # acting as input buffer
         self.packets = []
 
     def __eq__(self, other):
@@ -13,14 +13,17 @@ class Wire:
 
         return (self.router1 == other.router1) and (self.router2 == other.router2)
 
+    def __repr__(self):
+        return f"{self.router1.id},{self.router2.id}\n"
+
     def find_packet(self, packet):
         for p in self.packets:
-            if p == packet:
+            if p is packet:
                 return p
 
         return None
 
-    # stack behaviour
+    # Queue behaviour
     def insert_packet(self, packet):
         self.packets.append(packet)
 

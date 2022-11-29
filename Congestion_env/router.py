@@ -1,18 +1,18 @@
-
-
 class Router:
     def __init__(self, id, connections, kind, graph):
         # node on graph
         self.id = id
         self.network = graph
+        # avoiding using type, better name?
         self.kind = kind
 
         # edges where this is the src
         # list of wires connected to routers
-        self.connections = connections
+        self.connections = []
 
         # how many actions are possible in router
-        self.actions = len(connections)
+        if connections:
+            self.actions = len(connections)
 
         # depending on type, set buffer size
         if kind == 'T':
@@ -22,13 +22,17 @@ class Router:
         elif kind == 'C' or kind == 'CP':
             self.buffer_size = 10
 
-        self.buffer = []  # stack
+        self.buffer = []  # Queue
 
     def __eq__(self, other):
         if not isinstance(self, other):
             return False
 
         return self.id == other.id
+
+    def __repr__(self):
+
+        return f"id: {self.id}, type: {self.kind}\n connections: {self.connections}\n"
 
     def is_full(self):
         return len(self.buffer) >= self.buffer_size
@@ -40,10 +44,16 @@ class Router:
 
         return None
 
-    # stack behaviour
-    # todo: if this is the packet dst router, call network to remove packet from transmission
+    def add_connections(self, wires):
+        for wire in wires:
+            if self is wire.router1 or self is wire.router2:
+                self.connections.append(wire)
+
+            # Queue behaviour
+            # todo: if this is the packet dst router, call network to remove packet from transmission
+
     def insert_packet(self, packet):
-        if self.is_full():
+        if not self.is_full():
             self.buffer.append(packet)
             return True
 
