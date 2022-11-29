@@ -1,7 +1,7 @@
 import uuid
 import networkx as nx
-from wire import Wire
-from router import Router
+from Wire import Wire
+from Router import Router
 
 
 class Packet:
@@ -19,7 +19,10 @@ class Packet:
         if not isinstance(self, other):
             return False
 
-        return self.id == other.id
+        return self.id is other.id
+
+    def __repr__(self):
+        return f"id: {self.id},\n src: {self.curr}, dst: {self.dst}, curr: {self.curr}"
 
     def on_wire(self):
         return isinstance(self.curr, Wire)

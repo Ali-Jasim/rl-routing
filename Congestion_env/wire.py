@@ -3,6 +3,8 @@ class Wire:
         # connection between two routers
         self.router1 = router1
         self.router2 = router2
+        # need a tuple to jump on graph
+        self.jump = (router1.id, router2.id)
         # list of packets on wire
         # acting as input buffer
         self.packets = []
@@ -11,7 +13,7 @@ class Wire:
         if not isinstance(self, other):
             return False
 
-        return (self.router1 == other.router1) and (self.router2 == other.router2)
+        return (self.router1 is other.router1) and (self.router2 is other.router2)
 
     def __repr__(self):
         return f"{self.router1.id},{self.router2.id}\n"
