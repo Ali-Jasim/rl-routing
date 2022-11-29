@@ -10,9 +10,7 @@ class Router:
         # list of wires connected to routers
         self.connections = []
 
-        # how many actions are possible in router
-        if connections:
-            self.actions = len(connections)
+        self.actions = []
 
         # depending on type, set buffer size
         if kind == 'T':
@@ -45,19 +43,32 @@ class Router:
     # can only add and find connections
     def has_connection(self, dst):
         for connection in self.connections:
-            if connection == dst:
+            node1, node2 = connection.jump
+            if dst == node1 or dst == node2:
                 return connection
 
         return None
 
-    def add_connections(self, wires):
+    def build_connections(self, wires):
         for wire in wires:
             if self is wire.router1 or self is wire.router2:
                 self.connections.append(wire)
 
+    def build_actions(self):
+        for connection in self.connections:
+            r1, r2 = connection.jump
+            if r1 != self.id:
+                self.actions.append(r1)
+            elif r2 != self.id:
+                self.actions.append(r2)
+
     # no need for queue, just find and remove
     # todo: if this is the packet dst router, call network to remove packet from transmission
+
     def insert_packet(self, packet):
+        if self is packet.dst:
+            return True
+
         if not self.is_full():
             # enqueue packet
             self.buffer.append(packet)
@@ -73,16 +84,17 @@ class Router:
         # move packet to wire
         wire = self.has_connection(dst)
         packet_index = self.find_packet(packet)
-        if wire and self.buffer and packet_index:
+        if wire and self.buffer and packet_index != -1:
             # dequeue packet
-            self.buffer[packet_index].push_to_wire(wire, dst)
             self.buffer.remove(packet)
+            wire.insert_packet(packet)
+            return wire
 
     def find_packet(self, packet):
         for index, p in enumerate(self.buffer):
             if p is packet:
                 return index
-        return None
+        return -1
 
     # cant generate packets here, must generate from network and insert to routers
     # centralized controller controls packet path

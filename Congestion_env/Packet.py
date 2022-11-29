@@ -8,21 +8,25 @@ class Packet:
     def __init__(self, src, dst, graph, path=[]):
         self.id = str(uuid.uuid4())
         self.curr = src
-        self.next_hop = None
+        self.curr_router = src  # we need to know src router for each hop on wire
+        self.next_router = None  # updated on path update
         self.src = src
         self.dst = dst
-        self.path = path
-        self.graph = graph
+        self.graph = graph  # change this to network on vscode
+        self.path = self.update_path()
+
+# possibly return possible actions in current router
+# possible actions = where we can hop
 
     # add an equal method to find
     def __eq__(self, other):
         if not isinstance(self, other):
             return False
 
-        return self.id is other.id
+        return self.id == other.id
 
     def __repr__(self):
-        return f"id: {self.id},\n src: {self.curr}, dst: {self.dst}, curr: {self.curr}"
+        return f"id: {self.id},\n curr: {self.curr_router}, dst: {self.dst}"
 
     def on_wire(self):
         return isinstance(self.curr, Wire)
@@ -30,26 +34,26 @@ class Packet:
     def on_router(self):
         return isinstance(self.curr, Router)
 
-    def push_to_wire(self, wire, dst):
+    # this is the input buffer for the next router
+    def push_to_wire(self):
         if isinstance(self.curr, Router):
-            self.curr = wire
-            self.next_hop = dst
+            self.curr = self.curr.remove_packet(self, self.next_router)
 
-    def push_to_router(self, router):
+    def push_to_router(self):
         if isinstance(self.curr, Wire):
-            self.curr = router
-            self.update_path()
-            self.next_hop = self.find_next_hop()
-
-    def find_next_hop(self):
-        # we are at destination
-        if len(self.path) < 2:
-            return -1
-        # shortest path
-        return self.path[1]
+            router = self.curr.remove_packet(self, self.next_router)
+            if router:
+                self.curr_router = router
+                self.curr = router
+                self.update_path()
+            # otherwise we stay on wire
 
     def complete(self):
         return self.curr is self.dst
 
+    # build a more sophisticated path finding function, for now, shortest path
     def update_path(self):
-        self.path = nx.shortest_path(self.graph, self.curr, self.dst)
+        self.path = nx.shortest_path(
+            self.graph, self.curr_router.id, self.dst.id)
+        if len(self.path) >= 2:
+            self.next_router = self.path[1]

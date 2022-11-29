@@ -21,28 +21,26 @@ class Wire:
     def find_packet(self, packet):
         for p in self.packets:
             if p is packet:
-                return p
+                return packet
 
         return None
 
-    # Queue behaviour
     def insert_packet(self, packet):
         self.packets.append(packet)
 
     def remove_packet(self, packet, dst):
         p = self.find_packet(packet)
 
-        if dst is self.router1:
-            self.hop(p, self.router1)
-        elif dst is self.router2:
-            self.hop(p, self.router2)
+        if dst == self.router1.id:
+            return self.hop(p, self.router1)
+        elif dst == self.router2.id:
+            return self.hop(p, self.router2)
 
     def hop(self, packet, dst):
         # if we successfully hopped to router, remove packet
         if packet and dst.insert_packet(packet):
-            packet.push_to_router(dst)
             self.packets.remove(packet)
-            return self.dst
+            return dst
 
         # operation failure, dst router congested
-        return -1
+        return None

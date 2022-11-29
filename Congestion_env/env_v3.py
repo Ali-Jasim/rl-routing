@@ -47,7 +47,8 @@ for connection in all_connections:
 
 # building the network
 for router in routers:
-    router.add_connections(wires)
+    router.build_connections(wires)
+    router.build_actions()
 
 
 def generate_packets(amount=1):
@@ -71,4 +72,10 @@ def generate_packets(amount=1):
 
 
 generate_packets(9)
-print(routers[22].buffer)
+
+# shortest path implemented
+for packet in packets:
+    while not packet.complete():
+        packet.push_to_wire()
+        packet.push_to_router()
+        print(packet)
