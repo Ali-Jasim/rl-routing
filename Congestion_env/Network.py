@@ -31,12 +31,14 @@ class Network:
         self.build_network()
 
     def shortest_path_step(self):
+        #copy = self.packets.copy()
         for packet in self.packets:
             # it doesnt work without this, why?
-            packet = self.packets[0]
             if not packet.complete():
-                packet.push_to_wire()
-                packet.push_to_router()
+                if packet.on_wire():
+                    packet.push_to_router()
+                else:
+                    packet.push_to_wire()
             else:
                 print(packet)
                 self.packets.remove(packet)

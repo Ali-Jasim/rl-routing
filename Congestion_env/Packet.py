@@ -20,7 +20,7 @@ class Packet:
 
     # add an equal method to find
     def __eq__(self, other):
-        if not isinstance(self, other):
+        if not isinstance(self, type(other)):
             return False
 
         return self.id == other.id

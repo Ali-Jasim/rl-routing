@@ -10,7 +10,7 @@ class Wire:
         self.packets = []
 
     def __eq__(self, other):
-        if not isinstance(self, other):
+        if not isinstance(self, type(other)):
             return False
 
         return (self.router1 is other.router1) and (self.router2 is other.router2)

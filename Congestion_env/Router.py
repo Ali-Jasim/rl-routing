@@ -23,7 +23,7 @@ class Router:
         self.buffer = []  # Queue
 
     def __eq__(self, other):
-        if not isinstance(self, other):
+        if not isinstance(self, type(other)):
             return False
 
         return self.id == other.id
@@ -68,8 +68,7 @@ class Router:
     def insert_packet(self, packet):
         if self is packet.dst:
             return True
-
-        if not self.is_full():
+        elif not self.is_full():
             # enqueue packet
             self.buffer.append(packet)
             return True
@@ -86,8 +85,11 @@ class Router:
         packet_index = self.find_packet(packet)
         if wire and self.buffer and packet_index != -1:
             # dequeue packet
+
             self.buffer.remove(packet)
             wire.insert_packet(packet)
+
+            # wire.insert_packet(packet)
             return wire
 
     def find_packet(self, packet):
