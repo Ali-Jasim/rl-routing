@@ -46,6 +46,9 @@ class Packet:
                 self.curr_router = router
                 self.curr = router
                 self.update_path()
+                return 0
+            else:
+                return 1
             # otherwise we stay on wire
 
     def complete(self):

@@ -62,10 +62,9 @@ class Router:
             elif r2 != self.id:
                 self.actions.append(r2)
 
-    # no need for queue, just find and remove
-    # todo: if this is the packet dst router, call network to remove packet from transmission
-
+    # packet control operations
     def insert_packet(self, packet):
+        # if this is the dst router, accept regardless of buffer size
         if self is packet.dst:
             return True
         elif not self.is_full():

@@ -24,6 +24,8 @@ class Network:
         # total amount of packets
         self.packets = []
 
+        self.congestion_count = 0
+
         self.all_router_data = np.array(self.network.nodes.data())
         self.all_connections = np.array(self.network.edges())
 
@@ -31,15 +33,20 @@ class Network:
         self.build_network()
 
     def shortest_path_step(self):
-        #copy = self.packets.copy()
+        # loop through all packets, hop on each timestep
         for packet in self.packets:
-            # it doesnt work without this, why?
+            # packet step if not complete
             if not packet.complete():
+                # if the next hop routers buffer is full, packet stays on wire and retry
+                # next iteration of loop
+                # simulated CONGESTION!!
+                # todo: add negative reward and keep track of congestion rate
                 if packet.on_wire():
-                    packet.push_to_router()
+                    self.congestion_count += packet.push_to_router()
                 else:
                     packet.push_to_wire()
             else:
+                # print and remove packet on arrival
                 print(packet)
                 self.packets.remove(packet)
 
