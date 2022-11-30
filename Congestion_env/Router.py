@@ -1,8 +1,8 @@
 class Router:
-    def __init__(self, id, connections, kind, graph):
+    def __init__(self, id, kind, network, buffer_size):
         # node on graph
         self.id = id
-        self.network = graph
+        self.network = network
         # avoiding using type, better name?
         self.kind = kind
 
@@ -18,7 +18,7 @@ class Router:
         elif kind == 'M':
             self.buffer_size = 25  # change this to hold more packets
         elif kind == 'C' or kind == 'CP':
-            self.buffer_size = 10
+            self.buffer_size = buffer_size
 
         self.buffer = []  # Queue
 
