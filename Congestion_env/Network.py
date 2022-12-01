@@ -71,9 +71,15 @@ class Network:
     # low level initialization details
 
     def init_network(self, n):
-        graph = nx.random_internet_as_graph(n)
-        nx.set_node_attributes(graph, {})
-        return graph
+        G = nx.random_internet_as_graph(n)
+        # for visualization we can set a layout for nodes
+        pos = nx.spring_layout(G)
+        nx.set_node_attributes(G, pos, "pos")
+        #nx.set_node_attributes(G, {})
+        # for visualization
+        self.pos = nx.get_node_attributes(G, "pos")
+
+        return G
 
     def build_network(self):
         self.build_routers(self.customer_buffer_size)

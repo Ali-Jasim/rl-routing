@@ -9,14 +9,18 @@ class Router:
         # edges connected to this node
         # list of wires connected to routers
         self.connections = []
-
         self.actions = []
+
+        # if packet completes path, flag successful completion
+        self.completed = False
 
         # depending on type, set buffer size
         if kind == 'T':
-            self.buffer_size = 100  # change this to hold more packets
+            # change this to hold more packets
+            self.buffer_size = int(buffer_size*10)
         elif kind == 'M':
-            self.buffer_size = 25  # change this to hold more packets
+            # change this to hold more packets
+            self.buffer_size = int(buffer_size*2.5)
         elif kind == 'C' or kind == 'CP':
             self.buffer_size = buffer_size
 
@@ -34,11 +38,18 @@ class Router:
     # for visualization we need to know
     # if the router is full, active, and inactive
     # full = red; active = yellow; inactive = grey
+    # if we recieved packets destined on this step, flag completed true
     def is_full(self):
-        return len(self.buffer) >= self.buffer_size
+        return len(self.buffer) > self.buffer_size
 
     def is_active(self):
         return len(self.buffer) != 0
+
+    def is_completed(self):
+        return self.completed
+
+    def reset_completed(self):
+        self.completed = False
 
     # can only add and find connections
     def has_connection(self, dst):
@@ -66,6 +77,7 @@ class Router:
     def insert_packet(self, packet):
         # if this is the dst router, accept regardless of buffer size
         if self is packet.dst:
+            self.completed = True
             return True
         elif not self.is_full():
             # enqueue packet

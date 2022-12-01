@@ -25,6 +25,9 @@ class Wire:
 
         return None
 
+    def is_active(self):
+        return len(self.packets) != 0
+
     def insert_packet(self, packet):
         self.packets.append(packet)
 
