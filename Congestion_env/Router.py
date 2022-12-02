@@ -17,10 +17,10 @@ class Router:
         # depending on type, set buffer size
         if kind == 'T':
             # change this to hold more packets
-            self.buffer_size = int(buffer_size*10)
+            self.buffer_size = int(buffer_size*2)
         elif kind == 'M':
             # change this to hold more packets
-            self.buffer_size = int(buffer_size*2.5)
+            self.buffer_size = int(buffer_size*1.5)
         elif kind == 'C' or kind == 'CP':
             self.buffer_size = buffer_size
 

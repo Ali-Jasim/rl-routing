@@ -16,6 +16,12 @@ class Network:
         # all the routers and wires
         self.routers = []
         self.wires = []
+        self.all_actions = []
+        self.buffer_sizes = []
+        self.src_dst = []
+
+        # reward for each step
+        self.total_reward = 0
 
         # the routers that can generate new packets
         self.customer_routers = []
@@ -34,6 +40,7 @@ class Network:
 
     def shortest_path_step(self):
         # loop through all packets, hop on each timestep
+        reward = 0
         for packet in self.packets:
             # packet step if not complete
             if not packet.complete():
@@ -44,17 +51,25 @@ class Network:
                 if packet.on_wire():
                     self.congestion_count += packet.push_to_router()
                 else:
+                    packet.choose_action_shortest()
                     packet.push_to_wire()
+
+                reward += packet.reward
             else:
                 # print and remove packet on arrival
-                print(packet)
+                # print(packet)
                 self.packets.remove(packet)
+
+        self.update_buffer_sizes()
+        self.total_reward += reward
+        return reward
 
     def generate_packets(self, amount=1):
         if not amount > self.customer_buffer_size:
             for router in self.customer_routers:
                 src = self.routers[router.id]
-                for _ in range(amount):
+                rng = np.random.randint(amount)
+                for _ in range(rng):
                     dst = np.random.choice(self.customer_routers)
                     # dst cannot be the same src
                     # you cannot send packets to yourself
@@ -64,9 +79,26 @@ class Network:
                         p = Packet(src, dst, self.network)
                         self.routers[src.id].insert_packet(p)
                         self.packets.append(p)
+            # update paths
+            self.update_src_dst()
         else:
             raise Exception(
                 f"cannot generate more packets than buffer size: {self.customer_buffer_size}")
+
+    def update_packet_hop(self, packet, dst):
+        for p in self.packets:
+            if p == packet:
+                p.update_next_hop(dst)
+
+    def update_buffer_sizes(self):
+        self.buffer_sizes = []
+        for router in self.routers:
+            self.buffer_sizes.append(
+                [router.id, len(router.buffer), router.buffer_size])
+
+    def update_src_dst(self):
+        for packet in self.packets:
+            self.src_dst.append([packet.src_id, packet.dst_id])
 
     # low level initialization details
 
@@ -102,6 +134,8 @@ class Network:
 
             if kind == 'C' or kind == 'CP':
                 self.customer_routers.append(r)
+
+        self.all_actions = [i for i in range(len(self.routers))]
 
     def build_wires(self):
         for connection in self.all_connections:

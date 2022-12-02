@@ -6,6 +6,7 @@ import numpy as np
 # visualization libraries
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
+from matplotlib import pyplot as plt
 import cv2
 
 
@@ -22,6 +23,7 @@ class env:
 
     def reset(self):
         self.network.generate_packets(self.customer_buffer_size - 1)
+        self.network.congestion_count = 0
 
         return self.create_observation()
 
@@ -86,10 +88,14 @@ class env:
 
         return img
 
-    def step(self, action):
-        # shortest path step
-        self.network.shortest_path_step()
-        reward = 0
+    # action here will be a list of packets and next hop
+    def step(self, custom=False):
+        # our agent takes a step
+        if custom:
+            return
+        else:
+            # just take shortest path
+            reward = self.network.shortest_path_step()
 
         info = []
         return self.create_observation(), reward, self.done(), info
@@ -97,20 +103,64 @@ class env:
     def done(self):
         return len(self.network.packets) == 0
 
+    # return list of all actions, buffer sizes, src id, dst id
+    # return state of network, and anything related to the packets
+
     def create_observation(self):
-        return 1
+
+        # this shows connectivity of graph
+        # good repersentation for neural network
+        adj_matrix = np.array(nx.adjacency_matrix(self.network.network))
+        # grab buffer_sizes in network
+        buffers = np.array(self.network.buffer_sizes)
+        # grab all packets src and dst
+        packet_path = np.array(self.network.src_dst)
+        # grab all actions
+        all_actions = np.array(self.network.all_actions)
+
+        # convert to tensor
+        return np.array([adj_matrix, buffers, all_actions, packet_path])
+
+    # attempt #1, choose action for every packet on every timestep
+    def get_actions(self):
+        all_packets = np.array(self.network.packets)
+
+        return all_packets
+
+    def choose_action(self, packet, dst):
+        self.network.update_packet_hop(packet, dst)
+
+# todo : add customizable agent
 
 
 if __name__ == '__main__':
-    e = env(100, 25)
+    e = env(25, 10)
+    # e.reset()
+    episodes = 10
 
-    e.reset()
-    n = 0
-    while not e.done():
-        cv2.imshow("network", e.render(mode='opencv'))
-        cv2.waitKey()
-        e.step(1)
-        n += 1
+    congestions = []
+    steps = []
+    eps = []
 
-    print(f"completed in {n} timesteps")
-    print(f"Congestions encountered: {e.network.congestion_count}")
+    for ep in range(episodes):
+        e.reset()
+        n = 0
+        while not e.done():
+            cv2.imshow("network", e.render(mode='opencv'))
+            cv2.waitKey()
+            print(e.step(None))
+            n += 1
+
+        steps.append(n)
+        congestions.append(e.network.congestion_count)
+        eps.append(1)
+
+    # plot results
+    plt.plot(eps, steps)
+    plt.plot(eps, congestions)
+
+    plt.tight_layout()
+    plt.show()
+
+    print(f"completed in {np.mean(n)} timesteps")
+    print(f"Congestions encountered: {np.mean(congestions)}")
