@@ -117,6 +117,7 @@ class Network:
         self.build_routers(self.customer_buffer_size)
         self.build_wires()
         self.connect_routers()
+        self.update_buffer_sizes()
 
     def connect_routers(self):
         for router in self.routers:

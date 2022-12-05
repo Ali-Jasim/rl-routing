@@ -2,6 +2,7 @@
 from Network import Network
 import networkx as nx
 import numpy as np
+from Simple_NN import Simple_Network
 
 # visualization libraries
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
@@ -110,50 +111,59 @@ class env:
 
         # this shows connectivity of graph
         # good repersentation for neural network
-        adj_matrix = np.array(nx.adjacency_matrix(self.network.network))
+        adj_matrix = np.array(nx.adjacency_matrix(
+            self.network.network).todense(), dtype=np.float32)
         # grab buffer_sizes in network
-        buffers = np.array(self.network.buffer_sizes)
-        # grab all packets src and dst
-        packet_path = np.array(self.network.src_dst)
-        # grab all actions
-        all_actions = np.array(self.network.all_actions)
+        buffer_sizes = np.array(self.network.buffer_sizes, dtype=np.float32)
+        all_actions = np.array(self.network.all_actions, dtype=np.float32)
+
+        obs = np.append(buffer_sizes, all_actions)
+        obs = np.append(adj_matrix, obs)
 
         # convert to tensor
-        return np.array([adj_matrix, buffers, all_actions, packet_path])
+        return obs
 
     # attempt #1, choose action for every packet on every timestep
     def get_actions(self):
-        all_packets = np.array(self.network.packets)
+        return np.array(self.network.all_actions)
 
-        return all_packets
+    def get_packets(self):
+        return np.array(self.network.packets)
 
+    # we can only choose actions when the packet is at a router
     def choose_action(self, packet, dst):
         self.network.update_packet_hop(packet, dst)
 
+
 # todo : add customizable agent
-
-
 if __name__ == '__main__':
-    e = env(25, 10)
-    # e.reset()
+    e = env(100, 10)
+    observation = e.reset()
     episodes = 10
+    print(observation.shape)
+    nn = Simple_Network(observation.shape, len(e.get_actions()), 0.01)
 
     congestions = []
     steps = []
     eps = []
 
     for ep in range(episodes):
-        e.reset()
+
         n = 0
         while not e.done():
             cv2.imshow("network", e.render(mode='opencv'))
             cv2.waitKey()
-            print(e.step(None))
+            observation, reward, done, info = e.step(None)
+            print(observation.shape)
+            print(nn.forward(observation))
+            nn.learn(observation, float(reward))
+            # print(e.get_actions())
             n += 1
 
         steps.append(n)
         congestions.append(e.network.congestion_count)
         eps.append(1)
+        e.reset()
 
     # plot results
     plt.plot(eps, steps)
@@ -161,6 +171,16 @@ if __name__ == '__main__':
 
     plt.tight_layout()
     plt.show()
+
+    # attempt #2, probably most realistic
+    # deep learning in customer routers?
+
+    # feed all valid paths to neural network
+    # tensors are beautiful
+    # in a huge network, there will always be insane amount of paths
+    # maybe cut off to top 5 shortest paths, and feed into network
+    # rank them with softmax
+    # set path at beginning of transmission
 
     print(f"completed in {np.mean(n)} timesteps")
     print(f"Congestions encountered: {np.mean(congestions)}")
