@@ -24,7 +24,7 @@ class Router:
         elif kind == 'C' or kind == 'CP':
             self.buffer_size = buffer_size
 
-        self.buffer = []  # Queue
+        self.buffer = []
 
     def __eq__(self, other):
         if not isinstance(self, type(other)):
@@ -40,7 +40,7 @@ class Router:
     # full = red; active = yellow; inactive = grey
     # if we recieved packets destined on this step, flag completed true
     def is_full(self):
-        return len(self.buffer) > self.buffer_size
+        return len(self.buffer) >= self.buffer_size
 
     def is_active(self):
         return len(self.buffer) != 0
@@ -108,6 +108,9 @@ class Router:
             if p is packet:
                 return index
         return -1
+
+    def clear_buffer(self):
+        self.buffer = []
 
     # cant generate packets here, must generate from network and insert to routers
     # centralized controller controls packet path

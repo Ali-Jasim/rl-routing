@@ -38,6 +38,42 @@ class Network:
         # build network
         self.build_network()
 
+    def step(self, p):
+        reward = 0
+        done = False
+        next_packet = None
+        for packet in self.packets:
+            if packet is p:
+                if not packet.complete():
+                    if isinstance(packet.curr, Router):
+                        # if the next hop routers buffer is full, packet stays on wire and retry
+                        # next iteration of loop
+                        # simulated CONGESTION!!
+                        # todo: add negative reward and keep track of congestion rate
+                        packet.push_to_wire()
+
+                        # packet.choose_action_shortest()
+                        congestion = packet.push_to_router()
+                        if congestion == 1:
+                            next_packet = None
+
+                        next_packet = packet
+                    else:
+                        congestion = packet.push_to_router()
+                        if congestion == 1:
+                            next_packet = None
+
+                    reward = packet.reward
+                else:
+                    reward = 100
+                    done = True
+                    #reward += packet.reward
+                    self.packets.remove(packet)
+
+        self.update_buffer_sizes()
+        self.total_reward += reward
+        return reward, done, next_packet
+
     def shortest_path_step(self):
         # loop through all packets, hop on each timestep
         reward = 0
@@ -68,8 +104,8 @@ class Network:
         if not amount > self.customer_buffer_size:
             for router in self.customer_routers:
                 src = self.routers[router.id]
-                rng = np.random.randint(amount)
-                for _ in range(rng):
+                #rng = np.random.randint(amount)
+                for _ in range(amount-1):
                     dst = np.random.choice(self.customer_routers)
                     # dst cannot be the same src
                     # you cannot send packets to yourself
@@ -91,10 +127,12 @@ class Network:
                 p.update_next_hop(dst)
 
     def update_buffer_sizes(self):
-        self.buffer_sizes = []
+        new_buffer = []
         for router in self.routers:
-            self.buffer_sizes.append(
-                [router.id, len(router.buffer), router.buffer_size])
+            new_buffer.append(
+                [router.id, len(router.buffer)/router.buffer_size])
+
+        self.buffer_sizes = new_buffer
 
     def update_src_dst(self):
         for packet in self.packets:

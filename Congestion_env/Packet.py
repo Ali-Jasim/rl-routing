@@ -46,10 +46,10 @@ class Packet:
 
     def validate_action(self):
         if self.next_router in self.curr.actions:
-            self.reward += -1
+            self.reward = 1
             return True
 
-        self.reward += -2
+        self.reward = -2
         self.next_router = None
         # as per paper, -2 for invalid actions
         return False
@@ -60,6 +60,7 @@ class Packet:
         if isinstance(self.curr, Router):
             if self.validate_action():
                 self.curr = self.curr.remove_packet(self, self.next_router)
+                self.next_router = self.next_router
 
     def push_to_router(self):
         if isinstance(self.curr, Wire):
@@ -72,7 +73,7 @@ class Packet:
                 return 0
             else:
                 # big negative reward for congestion
-                self.reward += -5
+                self.reward = -5
                 return 1
             # otherwise we stay on wire
 

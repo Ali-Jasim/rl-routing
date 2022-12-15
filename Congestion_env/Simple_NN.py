@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
+# plugging in a simple nueral network into this environment
+
 
 class Simple_Network(nn.Module):
     def __init__(self, input_shape, actions, lr):

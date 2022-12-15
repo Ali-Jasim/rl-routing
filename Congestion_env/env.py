@@ -2,7 +2,8 @@
 from Network import Network
 import networkx as nx
 import numpy as np
-from Simple_NN import Simple_Network
+from DDQN import Agent
+
 
 # visualization libraries
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
@@ -23,6 +24,14 @@ class env:
         self.canvas = FigureCanvas(self.fig)
 
     def reset(self):
+        self.network.packets = []
+
+        for i, router in enumerate(self.network.routers):
+            self.network.routers[i].clear_buffer()
+
+        for i, wire in enumerate(self.network.wires):
+            self.network.wires[i].clear_buffer()
+
         self.network.generate_packets(self.customer_buffer_size - 1)
         self.network.congestion_count = 0
 
@@ -90,16 +99,15 @@ class env:
         return img
 
     # action here will be a list of packets and next hop
-    def step(self, custom=False):
+    def step(self, custom=False, packet=None):
         # our agent takes a step
         if custom:
-            return
+            reward, done, packet = self.network.step(packet)
         else:
             # just take shortest path
             reward = self.network.shortest_path_step()
 
-        info = []
-        return self.create_observation(), reward, self.done(), info
+        return self.create_observation(), reward, done, packet
 
     def done(self):
         return len(self.network.packets) == 0
@@ -109,78 +117,121 @@ class env:
 
     def create_observation(self):
 
-        # this shows connectivity of graph
-        # good repersentation for neural network
-        adj_matrix = np.array(nx.adjacency_matrix(
-            self.network.network).todense(), dtype=np.float32)
-        # grab buffer_sizes in network
-        buffer_sizes = np.array(self.network.buffer_sizes, dtype=np.float32)
-        all_actions = np.array(self.network.all_actions, dtype=np.float32)
-
-        obs = np.append(buffer_sizes, all_actions)
-        obs = np.append(adj_matrix, obs)
+        Router_states = np.array(self.network.buffer_sizes, dtype=np.float32)
 
         # convert to tensor
-        return obs
+        return Router_states
 
     # attempt #1, choose action for every packet on every timestep
     def get_actions(self):
-        return np.array(self.network.all_actions)
+        all_packets = []
 
-    def get_packets(self):
-        return np.array(self.network.packets)
+        for packet in self.network.packets:
+            if packet.on_router():
+                all_packets.append(
+                    [packet, packet.src, packet.dst, packet.curr.actions])
+
+            if packet.on_wire():
+                packet.push_to_router()
+
+        return all_packets
 
     # we can only choose actions when the packet is at a router
+
     def choose_action(self, packet, dst):
         self.network.update_packet_hop(packet, dst)
 
 
-# todo : add customizable agent
+# Example usage
 if __name__ == '__main__':
-    e = env(100, 10)
+    e = env(50, 5)
     observation = e.reset()
     episodes = 10
     print(observation.shape)
-    nn = Simple_Network(observation.shape, len(e.get_actions()), 0.01)
+    brain = Agent(len(e.network.network.nodes),
+                  (100,), 1, 256, batch_size=512, lr=0.05, gamma=0.9, replace_thresh=10)
 
     congestions = []
     steps = []
     eps = []
 
     for ep in range(episodes):
-
+        #ep = 0
         n = 0
         while not e.done():
             cv2.imshow("network", e.render(mode='opencv'))
-            cv2.waitKey()
-            observation, reward, done, info = e.step(None)
-            print(observation.shape)
-            print(nn.forward(observation))
-            nn.learn(observation, float(reward))
-            # print(e.get_actions())
+            cv2.waitKey(1)
+            rewards = 0
+            step_count = 0
+            if e.get_actions():
+
+                for action in e.get_actions():
+
+                    packet = action[0]
+                    a = action[1].actions
+                    s = action[1].id
+                    d = action[2].id
+
+                    state_mask = [True for _ in range(
+                        (len(e.network.network.nodes,)))]
+
+                    state_mask = np.array(state_mask)
+
+                    state_mask[a] = False
+
+                    observation[state_mask, 0] = s
+                    observation[state_mask, 1] = d
+
+                    state = np.array(
+                        observation, dtype=np.float32).flatten()
+
+                    action = brain.choose_action(state)
+
+                    e.choose_action(packet, action)
+
+                    observation, reward, done, packet = e.step(
+                        custom=True, packet=packet)
+
+                    if packet:
+                        a = packet.curr_router.actions
+                        d = [packet.dst.id]
+                        s = [packet.src.id]
+
+                    state_mask = [True for _ in range(
+                        (len(e.network.network.nodes,)))]
+
+                    state_mask = np.array(state_mask)
+
+                    state_mask[a] = False
+                    state_mask[d] = False
+
+                    observation[state_mask, 0] = s
+                    observation[state_mask, 1] = d
+
+                    next_state = np.array(
+                        observation, dtype=np.float32).flatten()
+
+                    rewards += reward
+
+                    brain.store_transition(
+                        state, float(action), float(rewards), next_state, float(done))
+
+            brain.learn()
             n += 1
+            if n % 500 == 0:
+                observation = e.reset()
+
+                n = 0
+                ep += 1
+
+            print(
+                f"step: {n} step rewards: {rewards}, packets: {len(e.network.packets)}")
+            rewards = 0
 
         steps.append(n)
         congestions.append(e.network.congestion_count)
         eps.append(1)
         e.reset()
-
-    # plot results
-    plt.plot(eps, steps)
-    plt.plot(eps, congestions)
-
-    plt.tight_layout()
-    plt.show()
-
-    # attempt #2, probably most realistic
-    # deep learning in customer routers?
-
-    # feed all valid paths to neural network
-    # tensors are beautiful
-    # in a huge network, there will always be insane amount of paths
-    # maybe cut off to top 5 shortest paths, and feed into network
-    # rank them with softmax
-    # set path at beginning of transmission
 
     print(f"completed in {np.mean(n)} timesteps")
     print(f"Congestions encountered: {np.mean(congestions)}")

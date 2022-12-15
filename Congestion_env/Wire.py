@@ -47,3 +47,6 @@ class Wire:
 
         # operation failure, dst router congested
         return None
+
+    def clear_buffer(self):
+        self.packets = []
