@@ -127,12 +127,12 @@ class env:
         all_packets = []
 
         for packet in self.network.packets:
-            if packet.on_router():
-                all_packets.append(
-                    [packet, packet.src, packet.dst, packet.curr.actions])
+            # if packet.on_router():
+            all_packets.append(
+                [packet, packet.src, packet.dst, packet.curr_router.actions])
 
-            if packet.on_wire():
-                packet.push_to_router()
+            # if packet.on_wire():
+            #     packet.push_to_router()
 
         return all_packets
 
@@ -144,81 +144,81 @@ class env:
 
 # Example usage
 if __name__ == '__main__':
-    e = env(50, 5)
+    e = env(15, 100)
     observation = e.reset()
     episodes = 10
     print(observation.shape)
     brain = Agent(len(e.network.network.nodes),
-                  (100,), 1, 256, batch_size=512, lr=0.05, gamma=0.9, replace_thresh=10)
+                  (30,), 1, 512, batch_size=50, lr=0.05, gamma=0.99, replace_thresh=10,
+                  buffer_size=5000000)
 
     congestions = []
     steps = []
     eps = []
 
     for ep in range(episodes):
-        #ep = 0
+        # ep = 0
         n = 0
         while not e.done():
             cv2.imshow("network", e.render(mode='opencv'))
             cv2.waitKey(1)
             rewards = 0
             step_count = 0
-            if e.get_actions():
+            for action in e.get_actions():
+                # brain.replace_thresh = replace_thresh = len(e.network.packets)
+                packet = action[0]
+                a = action[1].actions
+                s = action[1].id
+                d = action[2].id
 
-                for action in e.get_actions():
+                state_mask = [True for _ in range(
+                    (len(e.network.network.nodes,)))]
 
-                    packet = action[0]
-                    a = action[1].actions
-                    s = action[1].id
-                    d = action[2].id
+                state_mask = np.array(state_mask)
 
-                    state_mask = [True for _ in range(
-                        (len(e.network.network.nodes,)))]
+                state_mask[a] = False
 
-                    state_mask = np.array(state_mask)
+                observation[state_mask, 0] = s
+                observation[state_mask, 1] = d
 
-                    state_mask[a] = False
+                state = np.array(
+                    observation+len(e.network.packets), dtype=np.float32).flatten()
 
-                    observation[state_mask, 0] = s
-                    observation[state_mask, 1] = d
+                action = brain.choose_action(state)
 
-                    state = np.array(
-                        observation, dtype=np.float32).flatten()
+                e.choose_action(packet, action)
 
-                    action = brain.choose_action(state)
+                observation, reward, done, packet = e.step(
+                    custom=True, packet=packet)
+                reward = reward * len(e.network.packets) / \
+                    len(e.network.packets)*2
+                if packet and packet.on_router():
+                    a = packet.curr_router.actions
+                    d = [packet.dst.id]
+                    s = [packet.src.id]
 
-                    e.choose_action(packet, action)
+                state_mask = [True for _ in range(
+                    (len(e.network.network.nodes,)))]
 
-                    observation, reward, done, packet = e.step(
-                        custom=True, packet=packet)
+                state_mask = np.array(state_mask)
 
-                    if packet:
-                        a = packet.curr_router.actions
-                        d = [packet.dst.id]
-                        s = [packet.src.id]
+                state_mask[a] = False
+                state_mask[d] = False
 
-                    state_mask = [True for _ in range(
-                        (len(e.network.network.nodes,)))]
+                observation[state_mask, 0] = s
+                observation[state_mask, 1] = d
 
-                    state_mask = np.array(state_mask)
+                next_state = np.array(
+                    observation+len(e.network.packets), dtype=np.float32).flatten()
 
-                    state_mask[a] = False
-                    state_mask[d] = False
+                rewards += reward
 
-                    observation[state_mask, 0] = s
-                    observation[state_mask, 1] = d
-
-                    next_state = np.array(
-                        observation, dtype=np.float32).flatten()
-
-                    rewards += reward
-
-                    brain.store_transition(
-                        state, float(action), float(rewards), next_state, float(done))
+                brain.store_transition(
+                    state, float(action), float(rewards), next_state, float(done))
 
             brain.learn()
             n += 1
-            if n % 500 == 0:
+            if n % 300 == 0:
                 observation = e.reset()
 
                 n = 0

@@ -73,7 +73,7 @@ class Packet:
                 return 0
             else:
                 # big negative reward for congestion
-                self.reward = -5
+                self.reward = -15
                 return 1
             # otherwise we stay on wire
 
