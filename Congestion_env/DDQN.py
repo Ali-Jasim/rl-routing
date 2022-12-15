@@ -35,7 +35,7 @@ class Agent():
         self.gamma = gamma  # discounting previous rewards
         self.eps = eps  # epsilon greedy, Explore-Expliot dilemma
         self.eps_min = 0.01  # minimum epsilon
-        self.eps_dec = 0.99999  # how we reduce epsilon, when we take greedy action
+        self.eps_dec = 0.99  # how we reduce epsilon, when we take greedy action
         self.learn_count = 0  # every 100 learning steps, update the target network
         # affects neural network training step (how loss affects the weights)
         self.lr = lr
