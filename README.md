@@ -1,6 +1,6 @@
 ## Congestion RL environment
 
-![visual](congestion_visual.gif)
+![visual](Routing_gif.gif)
 
 ## Requirements
 
