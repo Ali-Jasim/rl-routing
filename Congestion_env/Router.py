@@ -74,6 +74,7 @@ class Router:
                 self.actions.append(r2)
 
     # packet control operations
+
     def insert_packet(self, packet):
         # if this is the dst router, accept regardless of buffer size
         if self is packet.dst:

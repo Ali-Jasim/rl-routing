@@ -117,6 +117,7 @@ class Network:
                         self.packets.append(p)
             # update paths
             self.update_src_dst()
+            self.update_buffer_sizes()
         else:
             raise Exception(
                 f"cannot generate more packets than buffer size: {self.customer_buffer_size}")
@@ -129,8 +130,9 @@ class Network:
     def update_buffer_sizes(self):
         new_buffer = []
         for router in self.routers:
+
             new_buffer.append(
-                [router.id, len(router.buffer)/router.buffer_size])
+                [router.id, len(router.buffer)])
 
         self.buffer_sizes = new_buffer
 

@@ -23,6 +23,20 @@ class env:
         self.fig = Figure(figsize=(8, 8))
         self.canvas = FigureCanvas(self.fig)
 
+    def reset(self):
+        self.network.packets = []
+
+        for i in range(len(self.network.routers)):
+            self.network.routers[i].clear_buffer()
+
+        for i in range(len(self.network.wires)):
+            self.network.wires[i].clear_buffer()
+
+        self.network.generate_packets(self.customer_buffer_size - 1)
+        self.network.congestion_count = 0
+
+        return self.create_observation()
+
     def render(self, mode='opencv'):
         # two modes, matplotlib and opencv
 
@@ -84,22 +98,7 @@ class env:
 
         return img
 
-    def reset(self):
-        self.network.packets = []
-
-        for router in self.network.routers:
-            router.clear_buffer()
-
-        for wire in self.network.wires:
-            wire.clear_buffer()
-
-        self.network.generate_packets(self.customer_buffer_size - 1)
-        self.network.congestion_count = 0
-
-        return self.create_observation()
-
     # action here will be a list of packets and next hop
-
     def step(self, custom=False, packet=None):
         # our agent takes a step
         if custom:
@@ -137,7 +136,7 @@ class env:
 
         return all_packets
 
-    # for each router, choose action
+    # we can only choose actions when the packet is at a router
 
     def choose_action(self, packet, dst):
         self.network.update_packet_hop(packet, dst)
@@ -148,10 +147,92 @@ if __name__ == '__main__':
     e = env(15, 100)
     observation = e.reset()
     episodes = 10
-
+    print(observation.shape)
     brain = Agent(len(e.network.network.nodes),
-                  (30,), 1, 512, batch_size=50, lr=0.05, gamma=0.99, replace_thresh=10,
-                  buffer_size=5000000)
+                  (30,), 1, 128, batch_size=500, lr=0.1, gamma=0.99, replace_thresh=100,
+                  buffer_size=500000)
 
-    print(observation)
-    print(e.network.packets[0].src_id)
+    congestions = []
+    steps = []
+    eps = []
+
+    for ep in range(episodes):
+        # ep = 0
+        n = 0
+        while not e.done():
+            cv2.imshow("network", e.render(mode='opencv'))
+            cv2.waitKey(1)
+            rewards = 0
+            step_count = 0
+            actions = e.get_actions()
+            for action in actions:
+                # brain.replace_thresh = replace_thresh = len(e.network.packets)
+                packet = action[0]
+                a = action[1].actions
+                s = action[1].id
+                d = action[2].id
+
+                state_mask = [True for _ in range(
+                    (len(e.network.network.nodes,)))]
+
+                state_mask = np.array(state_mask)
+
+                state_mask[a] = False
+
+                observation[state_mask, 0] = s
+                observation[state_mask, 1] = d
+
+                state = np.array(
+                    observation+len(e.network.packets), dtype=np.float32).flatten()
+
+                action = brain.choose_action(state)
+
+                e.choose_action(packet, action)
+
+                observation, reward, done, packet = e.step(
+                    custom=True, packet=packet)
+                reward = reward * len(e.network.packets) / \
+                    len(e.network.packets)*2
+                if packet and packet.on_router():
+                    a = packet.curr_router.actions
+                    d = [packet.dst.id]
+                    s = [packet.src.id]
+
+                state_mask = [True for _ in range(
+                    (len(e.network.network.nodes,)))]
+
+                state_mask = np.array(state_mask)
+
+                state_mask[a] = False
+                state_mask[d] = False
+
+                observation[state_mask, 0] = s
+                observation[state_mask, 1] = d
+
+                next_state = np.array(
+                    observation+len(e.network.packets), dtype=np.float32).flatten()
+
+                rewards += reward
+
+                brain.store_transition(
+                    state, float(action), float(rewards), next_state, float(done))
+
+            brain.learn()
+            n += 1
+            if n % 300 == 0:
+                observation = e.reset()
+
+                n = 0
+                ep += 1
+
+            print(
+                f"step: {n} step rewards: {rewards}, packets: {len(e.network.packets)}")
+            rewards = 0
+
+        steps.append(n)
+        congestions.append(e.network.congestion_count)
+        eps.append(1)
+        e.reset()
+
+    print(f"completed in {np.mean(n)} timesteps")
+    print(f"Congestions encountered: {np.mean(congestions)}")
